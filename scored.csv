@@ -1,0 +1,6 @@
+patient_id,bilirubin,creatinine,inr,sodium,albumin,dialysis,sex,meld,meld_na,meld_3,mortality_3mo,priority
+P001,2.3,1.4,1.8,132,3.1,0,M,19,22,20,19.6%,Moderate priority — MELD 15–24
+P002,0.9,1.1,1.1,138,4.0,0,F,8,8,7,1.9%,Lower priority — MELD < 15 (exception points may apply)
+P003,10.0,3.0,3.5,128,2.0,0,M,40,40,40,71.3%,"Status 1A equivalent — highest urgency, acute liver failure / graft non-function"
+P004,4.0,1.0,2.5,130,2.5,1,F,35,36,39,52.6%,"Status 1B equivalent — very high priority, MELD ≥ 30"
+P005,1.0,1.0,1.0,140,4.5,0,M,6,6,3,1.9%,Lower priority — MELD < 15 (exception points may apply)
