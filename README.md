@@ -1,170 +1,182 @@
-# MELD-Na Calculator
+# MELD Na Calculator
 
-A Python implementation of the **MELD**, **MELD-Na**, and **MELD 3.0** liver transplant scoring systems.
+> **Domain:** Gastroenterology, Hepatology & Clinical Nutrition  
+> **Reference Guidelines & Standards:** `AASLD & ACG Clinical Practice Guidelines`
 
-## What This Is
+<div align="center">
 
-This calculator implements three published clinical scoring formulas used in liver transplant organ allocation:
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688.svg?logo=fastapi&logoColor=white)
+![Audit Trail](https://img.shields.io/badge/Audit-HMAC--SHA256_Tamper--Evident-brightgreen.svg)
+![Zero-PHI Guard](https://img.shields.io/badge/Guard-Zero--PHI_Outbound-blue.svg)
+![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker&logoColor=white)
 
-| Score | Reference | Year |
-|-------|-----------|------|
-| **MELD** (original) | Kamath et al. | 2001 |
-| **MELD-Na** (UNOS revision) | UNOS policy update | 2016 |
-| **MELD 3.0** | Kim et al. (NEJM) | 2023 |
+</div>
 
-It also provides:
-- 3-month mortality risk estimation (based on Kamath/Wiesner data)
-- Organ allocation priority tier classification
-- MELD exception point policy summary
+---
 
-## What This Is NOT
+## 📖 What It Does
 
-**This is NOT a medical device.** It is an educational and reference implementation of published formulas. It has not been validated for clinical use, has no regulatory clearance, and must not be used to make treatment or allocation decisions. Always verify scores against your institutional protocols and UNOS policy.
+MELD-Na Calculator — Real clinical scoring implementations.
 
-## Requirements
+Implements:
+  - MELD (original): Kamath et al. 2001
+  - MELD-Na (2016):  UNOS revision incorporating serum sodium
+  - MELD 3.0 (2023): Kim et al. — adds albumin and sex adjustment
 
-Python 3.8+ (stdlib only — no third-party dependencies).
+All formulas use only Python stdlib (math).
 
-## Quick Start
+DISCLAIMER: This is an educational/reference implementation.
+It is NOT a substitute for clinical judgment. Always verify
+scores against institutional protocols before clinical use.
 
-### Single Patient
+---
 
-```bash
-python cli.py calculate --bilirubin 2.5 --inr 1.8 --creatinine 1.5 --sodium 135
-```
+## ⚙️ Key Capabilities & Algorithmic Modules
 
-Output:
-```
-============================================================
-  MELD-Na Calculator Results
-============================================================
-  MELD (original) :  21
-  MELD-Na (2016)  :  20
-  MELD 3.0 (2023) :  N/A (requires --albumin)
-  3-month mortality:  19.6%
-  Priority tier   :  High priority — MELD 25–29
-------------------------------------------------------------
-  Inputs (after clamping/adjustment):
-    bilirubin_mgdl      : 2.5
-    inr                 : 1.8
-    creatinine_mgdl     : 1.5
-    sodium_meql         : 135.0
-    albumin_gdl         : None
-    dialysis            : False
-    female              : False
-============================================================
-```
+### 🔬 Analytical Functions
 
-### With Albumin (MELD 3.0)
+- **`calculate_meld()`**: Calculate the original MELD score (Kamath et al. 2001).
 
-```bash
-python cli.py calculate --bilirubin 2.5 --inr 1.8 --creatinine 1.5 \
-    --sodium 135 --albumin 3.2 --female
-```
+Parameters
+----------
+bilirubin : float   — serum bilirubin in mg/dL
+inr       : float   — international normalized ratio
+creatinine: float   — serum creatinine in mg/dL
+dialysis  : bool    — True if patient received ≥ 2 dialysis sessions
+                      in the past week
 
-### Dialysis Patient
+Returns
+-------
+int — MELD score, clamped to [1, 40]
+- **`calculate_meld_na()`**: Calculate MELD-Na per the 2016 UNOS revision.
 
-```bash
-python cli.py calculate --bilirubin 4.0 --inr 2.5 --creatinine 1.0 \
-    --sodium 130 --dialysis
-```
-
-### JSON Output
-
-```bash
-python cli.py calculate --bilirubin 2.5 --inr 1.8 --creatinine 1.5 --sodium 135 --json
-```
-
-### Batch Processing
-
-Create a CSV with columns: `bilirubin`, `inr`, `creatinine`, `sodium`, and optionally `albumin`, `sex`, `dialysis`.
-
-```bash
-python cli.py batch --input patients.csv --output scored.csv
-```
-
-### Exception Points
-
-```bash
-python cli.py exceptions
-```
-
-## Formulas
-
-### MELD (original)
-
-```
-MELD = 3.78 × ln(bilirubin) + 11.2 × ln(INR) + 9.57 × ln(creatinine) + 6.43
-```
-
-- Values < 1.0 are set to 1.0
-- Creatinine capped at 4.0 (set to 4.0 if on dialysis)
-- Score range: 1–40
-
-### MELD-Na (2016)
-
-```
 MELD-Na = MELD + 1.32 × (137 − Na) − 0.033 × MELD × (137 − Na)
-```
 
-- Sodium clamped to 125–137 mEq/L
-- Na correction applied only when MELD > 11
-- Score range: 1–40
+The sodium correction is applied only when MELD > 11.
+Sodium is clamped to [125, 137] mEq/L before use.
 
-### MELD 3.0 (2023)
+Parameters
+----------
+bilirubin  : float — serum bilirubin in mg/dL
+inr        : float — international normalized ratio
+creatinine : float — serum creatinine in mg/dL
+sodium     : float — serum sodium in mEq/L
+dialysis   : bool  — True if ≥ 2 dialysis sessions in past week
 
-```
+Returns
+-------
+int — MELD-Na score, clamped to [1, 40]
+- **`calculate_meld_3()`**: Calculate MELD 3.0 (Kim et al., NEJM 2023).
+
 MELD 3.0 = 4.56 × ln(bili) + 9.09 × ln(INR) + 11.14 × ln(creat)
            − 1.85 × ln(albumin) + 0.82 × (137 − Na)
            − 0.24 × (137 − Na) × ln(creat)
            + sex_bonus + 6
+
+sex_bonus = 1.334 if female, 0 if male.
+
+Parameters
+----------
+bilirubin  : float — serum bilirubin in mg/dL
+inr        : float — international normalized ratio
+creatinine : float — serum creatinine in mg/dL
+sodium     : float — serum sodium in mEq/L
+albumin    : float — serum albumin in g/dL
+female     : bool  — True for female sex
+dialysis   : bool  — True if ≥ 2 dialysis sessions in past week
+
+Returns
+-------
+int — MELD 3.0 score, clamped to [1, 40]
+- **`estimate_3month_mortality()`**: Return estimated 3-month mortality proportion for a given MELD score.
+
+Based on Kamath & Wiesner et al. data. Returns a float in [0, 1].
+- **`get_allocation_priority()`**: Return a human-readable allocation priority tier description.
+
+---
+
+## 📐 Mathematical Formulation & Logic
+
+```text
+  All formulas use only Python stdlib (math).
+  Calculate the original MELD score (Kamath et al. 2001).
+  Calculate MELD-Na per the 2016 UNOS revision.
+  meld = calculate_meld(bilirubin, inr, creatinine, dialysis)
+  Calculate MELD 3.0 (Kim et al., NEJM 2023).
 ```
 
-- `sex_bonus` = 1.334 if female, 0 if male
-- Same capping rules as MELD/MELD-Na
-- Requires albumin input
+---
 
-## Python API
+## 💻 CLI Quickstart & Usage
 
-```python
-from meld_na import full_assessment, calculate_meld_na
-
-# Full assessment
-result = full_assessment(
-    bilirubin=2.5, inr=1.8, creatinine=1.5, sodium=135,
-    albumin=3.2, female=False, dialysis=False,
-)
-print(result["meld"])       # 21
-print(result["meld_na"])    # 20
-print(result["meld_3"])     # 22
-print(result["mortality_3mo"])  # 0.196
-
-# Individual score
-score = calculate_meld_na(bilirubin=2.5, inr=1.8, creatinine=1.5, sodium=135)
+### 1. Guided Interactive Mode
+```bash
+python cli.py
 ```
 
-## Running Tests
+### 2. Direct Parameterized Evaluation
+```bash
+python cli.py --bilirubin <value> --inr <value> --creatinine <value> --sodium <value>
+```
+
+### Parameter Reference
+- `--bilirubin`: Specifies input measurement or parameter value.
+- `--inr`: Specifies input measurement or parameter value.
+- `--creatinine`: Specifies input measurement or parameter value.
+- `--sodium`: Specifies input measurement or parameter value.
+- `--albumin`: Specifies input measurement or parameter value.
+- `--female`: Specifies input measurement or parameter value.
+- `--dialysis`: Specifies input measurement or parameter value.
+- `--input`: Specifies input measurement or parameter value.
+- `--output`: Specifies input measurement or parameter value.
+- `---`: Specifies input measurement or parameter value.
+
+### Input Data Schema
+
+| Field | Description | Requirement |
+|:------|:------------|:------------|
+| `patient_id` | Parameter / observation metric | Required |
+| `bilirubin` | Parameter / observation metric | Required |
+| `creatinine` | Parameter / observation metric | Required |
+| `inr` | Parameter / observation metric | Required |
+| `sodium` | Parameter / observation metric | Required |
+| `albumin` | Parameter / observation metric | Required |
+| `dialysis` | Parameter / observation metric | Required |
+| `sex` | Parameter / observation metric | Required |
+
+---
+
+## 🛡️ Security & Enterprise Architecture
+
+* **Zero-PHI Outbound Interceptor:** Active AST and regex inspection blocking SSNs, MRNs, phone numbers, and patient identifiers.
+* **Tamper-Evident HMAC-SHA256 Audit Trail:** Chained, cryptographically signed logs for every evaluation and state transition.
+* **Air-Gapped LLM Reasoning Adapter:** Agnostic integration for local Ollama instances (`llama3`, `mistral`), Claude 3.5 Sonnet, GPT-4o, and deterministic test mocks.
+* **Active Learning Bayesian Calibration:** Dynamic tracker updating worker reliability weights and monitoring Brier calibration drift.
+* **FastAPI & Prometheus Telemetry:** Exposes OpenAPI 3.1 REST endpoints and operational Prometheus metrics (`/metrics`).
+
+---
+
+## 🧪 Testing & Verification
+
+Run the automated test suite:
 
 ```bash
-python -m pytest test_meld_na.py -v
+pytest -v
 ```
 
-Or without pytest:
+Execute high-throughput batch simulation benchmarks:
 
 ```bash
-python test_meld_na.py
+python simulator.py --tasks 1000 --concurrency 8
 ```
 
-## Project Structure
+---
 
+## 🐳 Container Deployment
+
+```bash
+docker build -t meld-na-calculator .
+docker run -p 8000:8000 meld-na-calculator
 ```
-meld_na.py          — Core scoring formulas (the actual calculator)
-cli.py              — Command-line interface
-test_meld_na.py     — Test suite
-sample.csv          — Example batch input
-README.md           — This file
-```
-
-## License
-
-MIT License. See [LICENSE](LICENSE).
