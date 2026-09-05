@@ -576,6 +576,43 @@ def test_meld_3_min_cap():
 
 
 # ===================================================================
+# 12. Input validation (NaN / Inf rejection)
+# ===================================================================
+def test_nan_input_rejected():
+    """NaN inputs should raise ValueError."""
+    import pytest
+    try:
+        calculate_meld(float("nan"), 1.5, 1.2)
+        _check("nan_bilirubin_rejected", False, "NaN was not rejected")
+    except ValueError:
+        _check("nan_bilirubin_rejected", True)
+
+    try:
+        calculate_meld(2.0, float("inf"), 1.2)
+        _check("inf_inr_rejected", False, "Inf was not rejected")
+    except ValueError:
+        _check("inf_inr_rejected", True)
+
+
+def test_inf_input_rejected():
+    """Infinity inputs should raise ValueError."""
+    try:
+        calculate_meld_na(2.0, 1.5, 1.2, float("-inf"))
+        _check("neg_inf_sodium_rejected", False, "-Inf was not rejected")
+    except ValueError:
+        _check("neg_inf_sodium_rejected", True)
+
+
+def test_meld_3_nan_albumin_rejected():
+    """NaN albumin should raise ValueError in MELD 3.0."""
+    try:
+        calculate_meld_3(2.0, 1.5, 1.2, 135.0, float("nan"))
+        _check("nan_albumin_rejected", False, "NaN albumin was not rejected")
+    except ValueError:
+        _check("nan_albumin_rejected", True)
+
+
+# ===================================================================
 # Runner
 # ===================================================================
 def run_all_tests():

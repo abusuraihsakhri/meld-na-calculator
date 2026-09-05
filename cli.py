@@ -21,6 +21,15 @@ Usage examples:
   Show exception points info:
     python cli.py exceptions
 
+  Audit task evaluation:
+    python cli.py audit --task-id TASK-001
+
+  Chat with supervisor:
+    python cli.py chat "Explain MELD scoring"
+
+  Verify audit integrity:
+    python cli.py verify-audit
+
 DISCLAIMER: Educational/reference tool only. Not for clinical decision-making.
 """
 
@@ -38,6 +47,9 @@ from meld_na import (
     get_allocation_priority,
     get_exception_points_info,
 )
+
+from agents.supervisor import SystemSupervisor
+from agents.base import AuditLogger, PHIGuard, SecurityException
 
 
 def _print_result(result: dict) -> None:
@@ -175,6 +187,58 @@ def cmd_exceptions(args):
     return 0
 
 
+def cmd_audit(args):
+    """Handle the 'audit' subcommand — evaluate a task through the supervisor."""
+    from agents.models import SystemTaskPayload
+    supervisor = SystemSupervisor(model_provider="mock")
+    payload = SystemTaskPayload(
+        task_id=args.task_id,
+        target_identifier=args.target_id,
+        primary_metric=args.primary_metric,
+        secondary_metric=args.secondary_metric,
+        status_descriptor=args.status_descriptor,
+        is_critical_flag=args.is_critical,
+    )
+    dossier = supervisor.process_task(payload)
+    print(json.dumps(dossier.to_dict(), indent=2, default=str))
+    return 0
+
+
+def cmd_chat(args):
+    """Handle the 'chat' subcommand — query the supervisor."""
+    supervisor = SystemSupervisor(model_provider="mock")
+    query = " ".join(args.query)
+    try:
+        response = supervisor.query_supervisory_chat(query)
+        print(response)
+    except SecurityException as e:
+        print(f"Security violation: {e}", file=sys.stderr)
+        return 1
+    return 0
+
+
+def cmd_verify_audit(args):
+    """Handle the 'verify-audit' subcommand — verify audit trail integrity."""
+    verified = AuditLogger.verify_integrity()
+    trail = AuditLogger.get_trail()
+    print(f"Audit trail entries: {len(trail)}")
+    print(f"Integrity verified: {verified}")
+    return 0 if verified else 1
+
+
+def cmd_serve(args):
+    """Handle the 'serve' subcommand — start the FastAPI REST server."""
+    try:
+        import uvicorn
+        from agents.api import app
+        uvicorn.run(app, host=args.host, port=args.port)
+    except ImportError:
+        print("Error: uvicorn and fastapi are required for the server.", file=sys.stderr)
+        print("Install with: pip install fastapi uvicorn", file=sys.stderr)
+        return 1
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="meld-na-calculator",
@@ -241,6 +305,66 @@ def build_parser() -> argparse.ArgumentParser:
         help="Show MELD exception point policies",
     )
 
+    # --- audit ---
+    p_audit = sub.add_parser(
+        "audit",
+        help="Evaluate a task through the supervisor audit pipeline",
+    )
+    p_audit.add_argument(
+        "--task-id", default="TASK-DEFAULT",
+        help="Task identifier for the audit evaluation",
+    )
+    p_audit.add_argument(
+        "--target-id", default="TARGET-DEFAULT",
+        help="Target identifier for the audit evaluation",
+    )
+    p_audit.add_argument(
+        "--primary-metric", type=float, default=12.0,
+        help="Primary metric value (default: 12.0)",
+    )
+    p_audit.add_argument(
+        "--secondary-metric", type=float, default=4.0,
+        help="Secondary metric value (default: 4.0)",
+    )
+    p_audit.add_argument(
+        "--status-descriptor", default="NOMINAL",
+        help="Status descriptor (default: NOMINAL)",
+    )
+    p_audit.add_argument(
+        "--is-critical", action="store_true",
+        help="Mark as critical/emergency case",
+    )
+
+    # --- chat ---
+    p_chat = sub.add_parser(
+        "chat",
+        help="Query the supervisor with a natural language question",
+    )
+    p_chat.add_argument(
+        "query", nargs="+",
+        help="Query text for the supervisor",
+    )
+
+    # --- verify-audit ---
+    sub.add_parser(
+        "verify-audit",
+        help="Verify the HMAC-SHA256 audit trail integrity",
+    )
+
+    # --- serve ---
+    p_serve = sub.add_parser(
+        "serve",
+        help="Start the FastAPI REST API server",
+    )
+    p_serve.add_argument(
+        "--host", default="0.0.0.0",
+        help="Host to bind (default: 0.0.0.0)",
+    )
+    p_serve.add_argument(
+        "--port", type=int, default=8000,
+        help="Port to bind (default: 8000)",
+    )
+
     return parser
 
 
@@ -254,6 +378,14 @@ def main(argv=None):
         return cmd_batch(args)
     elif args.command == "exceptions":
         return cmd_exceptions(args)
+    elif args.command == "audit":
+        return cmd_audit(args)
+    elif args.command == "chat":
+        return cmd_chat(args)
+    elif args.command == "verify-audit":
+        return cmd_verify_audit(args)
+    elif args.command == "serve":
+        return cmd_serve(args)
     else:
         parser.print_help()
         return 1

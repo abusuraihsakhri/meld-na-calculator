@@ -111,50 +111,80 @@ Based on Kamath & Wiesner et al. data. Returns a float in [0, 1].
 
 ## 💻 CLI Quickstart & Usage
 
-### 1. Guided Interactive Mode
+### 1. Calculate MELD Scores
 ```bash
-python cli.py
+python cli.py calculate --bilirubin 2.5 --inr 1.8 --creatinine 1.5 --sodium 135
 ```
 
-### 2. Direct Parameterized Evaluation
+### 2. With MELD 3.0 (albumin + sex)
 ```bash
-python cli.py --bilirubin <value> --inr <value> --creatinine <value> --sodium <value>
+python cli.py calculate --bilirubin 2.5 --inr 1.8 --creatinine 1.5 \
+    --sodium 135 --albumin 3.2 --female
+```
+
+### 3. JSON Output
+```bash
+python cli.py calculate --bilirubin 2.5 --inr 1.8 --creatinine 1.5 --sodium 135 --json
+```
+
+### 4. Batch Processing
+```bash
+python cli.py batch --input patients.csv --output scored.csv
+```
+
+### 5. Show Exception Points Info
+```bash
+python cli.py exceptions
+```
+
+### 6. Audit Task Evaluation
+```bash
+python cli.py audit --task-id TASK-001
+```
+
+### 7. Verify Audit Trail Integrity
+```bash
+python cli.py verify-audit
+```
+
+### 8. Start REST API Server
+```bash
+python cli.py serve --host 0.0.0.0 --port 8000
 ```
 
 ### Parameter Reference
-- `--bilirubin`: Specifies input measurement or parameter value.
-- `--inr`: Specifies input measurement or parameter value.
-- `--creatinine`: Specifies input measurement or parameter value.
-- `--sodium`: Specifies input measurement or parameter value.
-- `--albumin`: Specifies input measurement or parameter value.
-- `--female`: Specifies input measurement or parameter value.
-- `--dialysis`: Specifies input measurement or parameter value.
-- `--input`: Specifies input measurement or parameter value.
-- `--output`: Specifies input measurement or parameter value.
-- `---`: Specifies input measurement or parameter value.
+| Parameter | Description | Required |
+|:----------|:------------|:---------|
+| `--bilirubin` | Serum bilirubin (mg/dL) | Yes |
+| `--inr` | International normalized ratio | Yes |
+| `--creatinine` | Serum creatinine (mg/dL) | Yes |
+| `--sodium` | Serum sodium (mEq/L) | Yes |
+| `--albumin` | Serum albumin (g/dL) — enables MELD 3.0 | No |
+| `--female` | Patient is female (for MELD 3.0) | No |
+| `--dialysis` | Patient had ≥2 dialysis sessions/week | No |
+| `--json` | Output as JSON | No |
 
-### Input Data Schema
+### Input Data Schema (for batch CSV)
 
 | Field | Description | Requirement |
 |:------|:------------|:------------|
-| `patient_id` | Parameter / observation metric | Required |
-| `bilirubin` | Parameter / observation metric | Required |
-| `creatinine` | Parameter / observation metric | Required |
-| `inr` | Parameter / observation metric | Required |
-| `sodium` | Parameter / observation metric | Required |
-| `albumin` | Parameter / observation metric | Required |
-| `dialysis` | Parameter / observation metric | Required |
-| `sex` | Parameter / observation metric | Required |
+| `patient_id` | Unique patient identifier | Required |
+| `bilirubin` | Serum bilirubin (mg/dL) | Required |
+| `creatinine` | Serum creatinine (mg/dL) | Required |
+| `inr` | International normalized ratio | Required |
+| `sodium` | Serum sodium (mEq/L) | Required |
+| `albumin` | Serum albumin (g/dL) | Optional |
+| `dialysis` | Dialysis flag (0/1/true/false) | Optional |
+| `sex` | Sex (M/F) | Optional |
 
 ---
 
 ## 🛡️ Security & Enterprise Architecture
 
-* **Zero-PHI Outbound Interceptor:** Active AST and regex inspection blocking SSNs, MRNs, phone numbers, and patient identifiers.
-* **Tamper-Evident HMAC-SHA256 Audit Trail:** Chained, cryptographically signed logs for every evaluation and state transition.
-* **Air-Gapped LLM Reasoning Adapter:** Agnostic integration for local Ollama instances (`llama3`, `mistral`), Claude 3.5 Sonnet, GPT-4o, and deterministic test mocks.
-* **Active Learning Bayesian Calibration:** Dynamic tracker updating worker reliability weights and monitoring Brier calibration drift.
-* **FastAPI & Prometheus Telemetry:** Exposes OpenAPI 3.1 REST endpoints and operational Prometheus metrics (`/metrics`).
+* **Zero-PHI Outbound Interceptor:** Active regex inspection blocking SSNs, MRNs, phone numbers, emails, and patient identifiers.
+* **Tamper-Evident HMAC-SHA256 Audit Trail:** Chained, cryptographically signed logs for every evaluation. Set `AUDIT_SECRET_KEY` environment variable for production use.
+* **Input Validation:** All numeric inputs are validated to reject NaN and Infinity values.
+* **FastAPI & Prometheus Telemetry:** Exposes REST endpoints (`/health`, `/metrics`, `/api/audit`, `/api/chat`, `/api/audit/logs`).
 
 ---
 
@@ -166,10 +196,18 @@ Run the automated test suite:
 pytest -v
 ```
 
-Execute high-throughput batch simulation benchmarks:
+Run specific test files:
 
 ```bash
-python simulator.py --tasks 1000 --concurrency 8
+pytest test_meld_na.py -v          # Core MELD calculation tests
+pytest tests/test_enrichment.py -v # Enrichment module tests
+pytest tests/test_meld_na_calculator.py -v  # Enterprise agent tests
+```
+
+Execute the simulation:
+
+```bash
+python simulator.py 100
 ```
 
 ---

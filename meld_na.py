@@ -53,6 +53,17 @@ ALLOCATION_TIERS = [
 # ---------------------------------------------------------------------------
 # Helper
 # ---------------------------------------------------------------------------
+def _validate_numeric(value: str, name: str) -> float:
+    """Validate and convert a numeric input, rejecting NaN and Inf."""
+    try:
+        result = float(value)
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"{name} must be a valid number, got {value!r}") from e
+    if math.isnan(result) or math.isinf(result):
+        raise ValueError(f"{name} must be finite, got {result}")
+    return result
+
+
 def _clamp(value: float, lo: float, hi: float) -> float:
     """Clamp *value* to [lo, hi]."""
     return max(lo, min(value, hi))
@@ -82,10 +93,10 @@ def calculate_meld(
     -------
     int — MELD score, clamped to [1, 40]
     """
-    # Floor at 1.0 (log of values < 1 is negative; MELD uses 1.0 minimum)
-    bili = _clamp(float(bilirubin), BILI_MIN, BILI_MAX)
-    inr_val = _clamp(float(inr), INR_MIN, INR_MAX)
-    creat = _clamp(float(creatinine), CREAT_MIN, CREAT_MAX)
+    # Validate and floor at 1.0 (log of values < 1 is negative; MELD uses 1.0 minimum)
+    bili = _clamp(_validate_numeric(bilirubin, "bilirubin"), BILI_MIN, BILI_MAX)
+    inr_val = _clamp(_validate_numeric(inr, "inr"), INR_MIN, INR_MAX)
+    creat = _clamp(_validate_numeric(creatinine, "creatinine"), CREAT_MIN, CREAT_MAX)
 
     # Dialysis override: ≥ 2 sessions in past week → creatinine = 4.0
     if dialysis:
@@ -137,7 +148,7 @@ def calculate_meld_na(
     if meld <= 11:
         return meld
 
-    na = _clamp(float(sodium), NA_MIN, NA_MAX)
+    na = _clamp(_validate_numeric(sodium, "sodium"), NA_MIN, NA_MAX)
 
     delta = 137.0 - na  # always ≥ 0 after clamping
     meld_na_raw = meld + 1.32 * delta - 0.033 * meld * delta
@@ -181,11 +192,11 @@ def calculate_meld_3(
     -------
     int — MELD 3.0 score, clamped to [1, 40]
     """
-    bili = _clamp(float(bilirubin), BILI_MIN, BILI_MAX)
-    inr_val = _clamp(float(inr), INR_MIN, INR_MAX)
-    creat = _clamp(float(creatinine), CREAT_MIN, CREAT_MAX)
-    na = _clamp(float(sodium), NA_MIN, NA_MAX)
-    alb = max(0.1, float(albumin))  # prevent log(0); no clinical cap specified
+    bili = _clamp(_validate_numeric(bilirubin, "bilirubin"), BILI_MIN, BILI_MAX)
+    inr_val = _clamp(_validate_numeric(inr, "inr"), INR_MIN, INR_MAX)
+    creat = _clamp(_validate_numeric(creatinine, "creatinine"), CREAT_MIN, CREAT_MAX)
+    na = _clamp(_validate_numeric(sodium, "sodium"), NA_MIN, NA_MAX)
+    alb = max(0.1, _validate_numeric(albumin, "albumin"))  # prevent log(0); no clinical cap specified
 
     if dialysis:
         creat = 4.0
@@ -216,7 +227,7 @@ def estimate_3month_mortality(meld_score: int) -> float:
 
     Based on Kamath & Wiesner et al. data. Returns a float in [0, 1].
     """
-    score = int(_clamp(meld_score, MELD_MIN, MELD_MAX))
+    score = int(_clamp(_validate_numeric(meld_score, "meld_score"), MELD_MIN, MELD_MAX))
     for upper, rate, _label in MORTALITY_TIERS:
         if score <= upper:
             return rate
@@ -225,7 +236,7 @@ def estimate_3month_mortality(meld_score: int) -> float:
 
 def get_allocation_priority(meld_score: int) -> str:
     """Return a human-readable allocation priority tier description."""
-    score = int(_clamp(meld_score, MELD_MIN, MELD_MAX))
+    score = int(_clamp(_validate_numeric(meld_score, "meld_score"), MELD_MIN, MELD_MAX))
     for upper, description in ALLOCATION_TIERS:
         if score >= upper:
             return description
@@ -273,6 +284,11 @@ def full_assessment(
         priority       — allocation priority tier (str)
         inputs         — dict of clamped/adjusted input values used
     """
+    bilirubin = _validate_numeric(bilirubin, "bilirubin")
+    inr = _validate_numeric(inr, "inr")
+    creatinine = _validate_numeric(creatinine, "creatinine")
+    sodium = _validate_numeric(sodium, "sodium")
+
     meld = calculate_meld(bilirubin, inr, creatinine, dialysis)
     meld_na = calculate_meld_na(bilirubin, inr, creatinine, sodium, dialysis)
 
