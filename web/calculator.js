@@ -127,7 +127,8 @@
       document.body.appendChild(link);
       link.click();
       link.remove();
-      URL.revokeObjectURL(url);
+      // Defer revocation so browsers can start the CSV download.
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
     });
   }
   root.MeldCalculator = { calculate: calculate };
