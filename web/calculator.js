@@ -90,11 +90,13 @@
           " mg/dL for legacy MELD); sodium " + a.sodium +
           " mEq/L; albumin " + a.albumin + " g/dL.";
         results.hidden = false;
+        document.getElementById("empty").hidden = true;
         exportButton.disabled = false;
         results.focus();
       } catch (exc) {
         latest = null;
         results.hidden = true;
+        document.getElementById("empty").hidden = false;
         exportButton.disabled = true;
         error.textContent = exc.message || "Could not calculate scores.";
       }
@@ -103,6 +105,7 @@
     form.addEventListener("reset", function () {
       latest = null;
       results.hidden = true;
+      document.getElementById("empty").hidden = false;
       exportButton.disabled = true;
       error.textContent = "";
     });
