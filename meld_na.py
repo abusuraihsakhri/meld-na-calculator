@@ -13,9 +13,9 @@ import math
 from typing import Any, Dict, Optional
 
 BILI_MIN = 1.0
-BILI_MAX = 99.0
+BILI_MAX = math.inf
 INR_MIN = 1.0
-INR_MAX = 99.0
+INR_MAX = math.inf
 CREAT_MIN = 1.0
 CREAT_MAX = 4.0                 # historical MELD / MELD-Na
 CREAT_3_MAX = 3.0               # adult MELD 3.0
