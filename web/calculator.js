@@ -25,8 +25,8 @@
       throw new Error("Select sex for adult MELD 3.0.");
     }
     const dialysis = data.dialysis === true;
-    const bili = clamp(bilirubin, 1, 99);
-    const coag = clamp(inr, 1, 99);
+    const bili = clamp(bilirubin, 1, Infinity);
+    const coag = clamp(inr, 1, Infinity);
     const creatLegacy = dialysis ? 4 : clamp(creatinine, 1, 4);
     const creat3 = dialysis ? 3 : clamp(creatinine, 1, 3);
     const na = clamp(sodium, 125, 137);
