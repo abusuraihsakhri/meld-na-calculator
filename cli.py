@@ -387,8 +387,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="Start the FastAPI REST API server",
     )
     p_serve.add_argument(
-        "--host", default="0.0.0.0",
-        help="Host to bind (default: 0.0.0.0)",
+        "--host", default="127.0.0.1",
+        help="Host to bind (default: 127.0.0.1)",
     )
     p_serve.add_argument(
         "--port", type=int, default=8000,
