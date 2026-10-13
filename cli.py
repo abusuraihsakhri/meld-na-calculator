@@ -63,8 +63,9 @@ def _print_result(result: dict) -> None:
         print(f"  MELD 3.0 (2023) :  {result['meld_3']}")
     else:
         print(f"  MELD 3.0 (2023) :  N/A (requires --albumin)")
-    print(f"  3-month mortality:  {result['mortality_3mo'] * 100:.1f}%")
-    print(f"  Priority tier   :  {result['priority']}")
+    print(f"  Historical original-MELD stratum (90 days): {result['mortality_3mo'] * 100:.1f}%")
+    print(f"  Caution: {result['mortality_note']}")
+    print(f"  Descriptive band:  {result['priority']}")
     print("-" * 60)
     print("  Inputs (after clamping/adjustment):")
     for k, v in result["inputs"].items():
@@ -124,10 +125,14 @@ def cmd_batch(args):
         return None
 
     def _parse_bool(val):
-        if val is None:
+        if val is None or str(val).strip() == "":
             return False
         s = str(val).strip().lower()
-        return s in ("1", "true", "yes", "y", "f", "female")
+        if s in ("1", "true", "yes", "y"):
+            return True
+        if s in ("0", "false", "no", "n"):
+            return False
+        raise ValueError("dialysis must be 0/1, true/false, or yes/no")
 
     out_fields = list(fieldnames)
     for extra in ["meld", "meld_na", "meld_3", "mortality_3mo", "priority"]:
@@ -137,15 +142,21 @@ def cmd_batch(args):
     out_rows = []
     for row in rows:
         try:
-            bili = float(_get(row, "bilirubin") or 1.0)
-            inr = float(_get(row, "inr") or 1.0)
-            creat = float(_get(row, "creatinine") or 1.0)
-            na = float(_get(row, "sodium") or 137.0)
+            # Never silently replace absent labs with a 'normal' default.
+            required = ("bilirubin", "inr", "creatinine", "sodium")
+            missing = [key for key in required if _get(row, key) is None]
+            if missing:
+                raise ValueError("Missing required value(s): " + ", ".join(missing))
+            bili = float(_get(row, "bilirubin"))
+            inr = float(_get(row, "inr"))
+            creat = float(_get(row, "creatinine"))
+            na = float(_get(row, "sodium"))
             alb_raw = _get(row, "albumin")
             alb = float(alb_raw) if alb_raw is not None else None
             dialysis = _parse_bool(_get(row, "dialysis"))
             sex_val = str(_get(row, "sex") or "M").strip().upper()
-            female = sex_val in ("F", "FEMALE") or _parse_bool(_get(row, "female"))
+            female_raw = str(_get(row, "female") or "").strip().lower()
+            female = sex_val in ("F", "FEMALE") or female_raw in ("1", "true", "yes", "y")
 
             result = full_assessment(
                 bilirubin=bili,
