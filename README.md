@@ -47,7 +47,7 @@ python cli.py calculate --bilirubin 2.5 --inr 1.8 --creatinine 1.5 --sodium 135 
 python cli.py batch --input sample.csv --output output.csv
 ```
 
-Batch CSV requires `bilirubin`, `inr`, `creatinine`, and `sodium` (documented aliases are accepted), with optional `albumin`, `sex`, and `dialysis`. Rows with missing/invalid inputs are marked `ERROR`, not silently imputed. Exported spreadsheet-formula-like text cells are escaped.
+Batch CSV requires `bilirubin`, `inr`, `creatinine`, and `sodium` (documented aliases are accepted), with optional `albumin`, `sex`, and `dialysis`; `sex` (or a consistent `female` flag) is required when albumin is provided to calculate MELD 3.0. Rows with missing/invalid inputs are marked `ERROR`, not silently imputed. Exported spreadsheet-formula-like text cells are escaped.
 
 To run the optional web service, including the same browser calculator:
 
