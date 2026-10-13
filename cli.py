@@ -154,8 +154,20 @@ def cmd_batch(args):
             alb_raw = _get(row, "albumin")
             alb = float(alb_raw) if alb_raw is not None else None
             dialysis = _parse_bool(_get(row, "dialysis"))
-            sex_val = str(_get(row, "sex") or "M").strip().upper()
-            female_raw = str(_get(row, "female") or "").strip().lower()
+            sex_input = _get(row, "sex")
+            female_input = _get(row, "female")
+            sex_val = str(sex_input or "").strip().upper()
+            female_raw = str(female_input or "").strip().lower()
+            if alb is not None and sex_input is None and female_input is None:
+                raise ValueError("sex (M/F) or female flag is required with albumin")
+            if sex_input is not None and sex_val not in ("M", "MALE", "F", "FEMALE"):
+                raise ValueError("sex must be M or F")
+            if female_input is not None and female_raw not in ("0", "1", "true", "false", "yes", "no", "y", "n"):
+                raise ValueError("female must be a true/false flag")
+            if sex_input is not None and female_input is not None:
+                is_female = sex_val in ("F", "FEMALE")
+                if is_female != (female_raw in ("1", "true", "yes", "y")):
+                    raise ValueError("conflicting sex and female inputs")
             female = sex_val in ("F", "FEMALE") or female_raw in ("1", "true", "yes", "y")
 
             result = full_assessment(
