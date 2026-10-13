@@ -183,10 +183,17 @@ def cmd_batch(args):
             merged["priority"] = str(e)
             out_rows.append(merged)
 
+    # Prevent spreadsheet-formula execution in untrusted string cells such
+    # as patient_id or other retained columns when the CSV is opened in Excel.
+    def _csv_safe(value):
+        if isinstance(value, str) and value.lstrip().startswith(("=", "+", "-", "@")):
+            return "'" + value
+        return value
+
     with open(args.output, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=out_fields, extrasaction="ignore")
         writer.writeheader()
-        writer.writerows(out_rows)
+        writer.writerows([{key: _csv_safe(val) for key, val in row.items()} for row in out_rows])
 
     print(f"Processed {len(out_rows)} patient(s) -> {args.output}")
     return 0
