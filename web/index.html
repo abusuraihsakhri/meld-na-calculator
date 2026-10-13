@@ -1,236 +1,111 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meld Na Calculator — Operations Console</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg: #090d16;
-            --card: #111827;
-            --border: #1f293d;
-            --accent: #3b82f6;
-            --accent-glow: rgba(59, 130, 246, 0.25);
-            --text: #f3f4f6;
-            --text-muted: #9ca3af;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --success: #10b981;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            padding: 2rem;
-            min-height: 100vh;
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 1.5rem;
-            margin-bottom: 2rem;
-        }
-        .header-title h1 { font-size: 1.6rem; font-weight: 700; color: #fff; }
-        .header-title p { color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem; }
-        .badge {
-            display: inline-block;
-            padding: 0.3rem 0.8rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            background: var(--accent-glow);
-            color: var(--accent);
-            border: 1px solid var(--accent);
-        }
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1.2fr;
-            gap: 1.5rem;
-        }
-        .card {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-        }
-        .card h2 {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .form-group { margin-bottom: 1rem; }
-        label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.4rem; }
-        input, select, textarea {
-            width: 100%;
-            padding: 0.65rem 0.9rem;
-            background: #0d1322;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            color: #fff;
-            font-family: inherit;
-            font-size: 0.9rem;
-        }
-        input:focus, textarea:focus { outline: none; border-color: var(--accent); }
-        .btn {
-            background: var(--accent);
-            color: #fff;
-            border: none;
-            padding: 0.7rem 1.4rem;
-            border-radius: 6px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.2s;
-            width: 100%;
-        }
-        .btn:hover { background: #2563eb; }
-        .terminal {
-            background: #060911;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1rem;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85rem;
-            color: #10b981;
-            height: 380px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-        }
-        .metrics-bar {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-        .metric-box {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1rem;
-            text-align: center;
-        }
-        .metric-val { font-size: 1.4rem; font-weight: 700; color: #fff; margin-top: 0.25rem; }
-        .metric-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>MELD 3.0 & MELD-Na Calculator</title>
+  <meta name="description" content="Private, in-browser adult MELD 3.0 calculator with historical MELD-Na and original MELD comparisons.">
+  <style>
+    :root { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color:#172b40; background:#f4f7fb; }
+    * { box-sizing:border-box; }
+    body { margin:0; line-height:1.55; }
+    .shell { max-width:970px; padding:28px 22px 60px; margin:auto; }
+    header { margin-bottom:22px; }
+    .eyebrow { font-size:.78rem; font-weight:750; letter-spacing:.11em; text-transform:uppercase; color:#235e88; }
+    h1 { font-size:clamp(1.7rem, 4vw, 2.5rem); letter-spacing:-.04em; line-height:1.15; margin:8px 0 12px; }
+    h2 { font-size:1.14rem; margin:0 0 18px; }
+    h3 { margin:12px 0 6px; font-size:1rem; }
+    p { margin:0 0 12px; }
+    .lede { color:#53677c; max-width:770px; }
+    .columns { display:grid; grid-template-columns: minmax(0, 1fr) minmax(0,.88fr); gap:18px; align-items:start; }
+    .panel { border:1px solid #dce5ed; background:white; box-shadow:0 4px 22px #26465d0a; border-radius:15px; padding:25px; }
+    .fields { display:grid; grid-template-columns:1fr 1fr; gap:15px; }
+    label { display:block; color:#314a61; font-size:.88rem; font-weight:650; margin:0 0 5px; }
+    label small { color:#677b8b; font-weight:450; }
+    input:not([type=checkbox]), select { display:block; width:100%; padding:11px 12px; border-radius:8px; background:#fff; color:#142b3f; border:1px solid #aabdcf; font:inherit; }
+    input:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible { outline:3px solid #70bafa; outline-offset:3px; }
+    .check { display:flex; gap:10px; align-items:flex-start; margin:19px 0; font-weight:550; cursor:pointer; }
+    .check input { margin-top:6px; width:17px; height:17px; accent-color:#126a8c; }
+    .actions { display:flex; gap:10px; flex-wrap:wrap; }
+    button { font:inherit; border-radius:9px; padding:11px 17px; border:1px solid #b3c2cd; background:#fff; color:#14374f; font-weight:700; cursor:pointer; }
+    button.primary { background:#176c89; border-color:#176c89; color:white; flex:2; }
+    button:hover:not(:disabled) { filter:brightness(.95); }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    .notice { padding:13px 14px; background:#eaf2f8; border-left:4px solid #176c89; color:#23445d; border-radius:6px; font-size:.86rem; margin-bottom:19px; }
+    .error { color:#ab1c24; font-weight:700; min-height:1.3rem; margin:10px 0 0; }
+    [hidden] { display:none !important; }
+    .scores { display:grid; grid-template-columns:1fr 1fr; gap:11px; }
+    .score { border:1px solid #d3e0e7; padding:14px; border-radius:9px; background:#f8fbfe; }
+    .score.primary { background:#e5f3f7; border-color:#93c5d5; grid-column:1/-1; }
+    .score strong { font-size:2.5rem; line-height:1.2; display:block; font-variant-numeric:tabular-nums; color:#145d79; }
+    .score span { font-size:.83rem; color:#4a6273; display:block; }
+    .subtle { color:#617788; font-size:.85rem; }
+    .divider { border-top:1px solid #dce5ed; margin:21px 0; }
+    .method { margin-top:18px; }
+    .method p, .method li { color:#42576a; font-size:.88rem; }
+    .method ul { padding-left:20px; }
+    a { color:#175b88; text-underline-offset:3px; }
+    footer { border-top:1px solid #dce5ed; margin-top:25px; padding-top:17px; font-size:.82rem; color:#607487; }
+    @media (max-width:760px) { .columns { grid-template-columns:1fr; } .shell { padding:19px 14px 35px; } .panel { padding:19px; } }
+    @media (max-width:420px) { .fields { grid-template-columns:1fr; } }
+  </style>
+  <script defer src="./calculator.js"></script>
 </head>
 <body>
-
-    <div class="header">
-        <div class="header-title">
-            <h1>Meld Na Calculator</h1>
-            <p>Domain: Clinical & Cryptographic AI | Standard: CAP / CLSI / NIST Standards | LabMind-Atlas Architecture</p>
+<main class="shell">
+  <header>
+    <div class="eyebrow">Hepatology · Reference calculator</div>
+    <h1>MELD 3.0 & MELD-Na</h1>
+    <p class="lede">Calculate the adult MELD 3.0 score and compare it with historical MELD-Na (2016) and original MELD. All computations run locally in your browser.</p>
+  </header>
+  <div class="columns">
+    <section class="panel" aria-labelledby="inputs-heading">
+      <h2 id="inputs-heading">Laboratory values</h2>
+      <form id="meld-form" novalidate>
+        <div class="fields">
+          <div><label for="bilirubin">Total bilirubin <small>(mg/dL)</small></label><input id="bilirubin" name="bilirubin" inputmode="decimal" type="number" min="0.001" step="any" value="2.5" required></div>
+          <div><label for="inr">INR</label><input id="inr" name="inr" inputmode="decimal" type="number" min="0.001" step="any" value="1.8" required></div>
+          <div><label for="creatinine">Creatinine <small>(mg/dL)</small></label><input id="creatinine" name="creatinine" inputmode="decimal" type="number" min="0.001" step="any" value="1.5" required></div>
+          <div><label for="sodium">Sodium <small>(mEq/L)</small></label><input id="sodium" name="sodium" inputmode="decimal" type="number" min="0.001" step="any" value="135" required></div>
+          <div><label for="albumin">Albumin <small>(g/dL)</small></label><input id="albumin" name="albumin" inputmode="decimal" type="number" min="0.001" step="any" value="3.2" required></div>
+          <div><label for="sex">Sex <small>(adult MELD 3.0 variable)</small></label><select id="sex" name="sex" required><option value="male">Male</option><option value="female">Female</option></select></div>
         </div>
-        <div>
-            <span class="badge">Air-Gapped Active</span>
-            <span class="badge" style="background: rgba(16,185,129,0.2); color: #10b981; border-color: #10b981;">Zero-PHI Guard Active</span>
+        <label class="check" for="dialysis"><input type="checkbox" id="dialysis" name="dialysis"><span>At least 2 dialysis sessions or 24 hours of CVVHD in the preceding week</span></label>
+        <div class="actions"><button type="submit" class="primary">Calculate scores</button><button type="reset">Reset</button></div>
+        <p id="error" class="error" role="alert" aria-live="polite"></p>
+      </form>
+      <div class="divider"></div>
+      <p class="subtle">For adult reference calculations only. MELD 3.0 for adolescents aged 12–17 requires different handling; PELD applies below age 12.</p>
+    </section>
+    <section class="panel" aria-labelledby="output-heading">
+      <h2 id="output-heading">Calculated results</h2>
+      <div class="notice">Educational reference only. These results are not an official waitlist allocation score, clinical recommendation, or transplant status determination.</div>
+      <div id="results" hidden tabindex="-1" aria-live="polite">
+        <div class="scores">
+          <div class="score primary"><span>Adult MELD 3.0 · current U.S. formula</span><strong id="meld3-value">—</strong></div>
+          <div class="score"><span>MELD-Na · 2016 historical</span><strong id="meldna-value">—</strong></div>
+          <div class="score"><span>Original MELD · historical</span><strong id="meld-value">—</strong></div>
         </div>
-    </div>
-
-    <div class="metrics-bar">
-        <div class="metric-box">
-            <div class="metric-label">System Status</div>
-            <div class="metric-val" style="color: var(--success);" id="m-status">OPTIMAL</div>
-        </div>
-        <div class="metric-box">
-            <div class="metric-label">Tasks Processed</div>
-            <div class="metric-val" id="m-tasks">142</div>
-        </div>
-        <div class="metric-box">
-            <div class="metric-label">Audit Blocks Signed</div>
-            <div class="metric-val" id="m-audit">142</div>
-        </div>
-        <div class="metric-box">
-            <div class="metric-label">PHI Interceptions</div>
-            <div class="metric-val" style="color: var(--accent);" id="m-phi">0</div>
-        </div>
-    </div>
-
-    <div class="grid">
-        <div class="card">
-            <h2>⚙️ Dispatch Distributed Component Audit</h2>
-            <div class="form-group">
-                <label>Task / Sample ID</label>
-                <input type="text" id="task_id" value="TASK-2026-LIVE-01">
-            </div>
-            <div class="form-group">
-                <label>Target Identifier</label>
-                <input type="text" id="target_id" value="SPECIMEN-ALPHA-77">
-            </div>
-            <div class="form-group">
-                <label>Primary Measurement / Value</label>
-                <input type="number" id="primary_metric" value="29.4" step="0.1">
-            </div>
-            <div class="form-group">
-                <label>Secondary Metric / Kinetic Index</label>
-                <input type="number" id="secondary_metric" value="14.8" step="0.1">
-            </div>
-            <div class="form-group">
-                <label>Status / Phenotype Descriptor</label>
-                <input type="text" id="status_descriptor" value="DISCORDANT_ANOMALY">
-            </div>
-            <div class="form-group">
-                <label><input type="checkbox" id="is_critical" checked> Trigger Emergency / Critical Flag</label>
-            </div>
-            <button class="btn" onclick="runAudit()">Execute Distributed Component Audit</button>
-        </div>
-
-        <div class="card">
-            <h2>📊 Real-Time Consensus Dossier & Audit Log</h2>
-            <div class="terminal" id="outputConsole">// Meld Na Calculator Operations Console Ready
-// Connection established with Air-Gapped Supervisor
-// Cryptographic HMAC-SHA256 audit ledger loaded.
-// Ready for live task payload dispatch...</div>
-        </div>
-    </div>
-
-    <script>
-        async function runAudit() {
-            const consoleEl = document.getElementById('outputConsole');
-            consoleEl.innerText = "// Dispatching task across specialized workers...
-// Invoking InvariantQCWorker, SafetyEscalationWorker, ProtocolWorker...";
-
-            const payload = {
-                task_id: document.getElementById('task_id').value,
-                target_identifier: document.getElementById('target_id').value,
-                primary_metric: parseFloat(document.getElementById('primary_metric').value),
-                secondary_metric: parseFloat(document.getElementById('secondary_metric').value),
-                status_descriptor: document.getElementById('status_descriptor').value,
-                is_critical_flag: document.getElementById('is_critical').checked
-            };
-
-            try {
-                const res = await fetch('/api/audit', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                consoleEl.innerText = JSON.stringify(data, null, 2);
-                document.getElementById('m-tasks').innerText = parseInt(document.getElementById('m-tasks').innerText) + 1;
-                document.getElementById('m-audit').innerText = parseInt(document.getElementById('m-audit').innerText) + 1;
-            } catch (err) {
-                consoleEl.innerText = "// Offline / Simulation Output:\n" + JSON.stringify({
-                    dossier_id: "DOSSIER-SIM-" + Math.floor(Math.random()*10000),
-                    system: "meld-na-calculator",
-                    domain: "Clinical & Cryptographic AI",
-                    task_id: payload.task_id,
-                    overall_urgency: payload.is_critical_flag ? "CRITICAL_STAT_PANIC" : "ELEVATED_RISK",
-                    integrity_status: "DISCORDANT_ANOMALY",
-                    alerts: [
-                        { worker: "InvariantQCWorker", alert: "Primary metric exceeds upper reference bound" },
-                        { worker: "SafetyEscalationWorker", alert: "Critical emergency interlock flag active" }
-                    ],
-                    audit_hash: "HMAC_SHA256_e83f9a72b941d6c381f9"
-                }, null, 2);
-            }
-        }
-    </script>
+        <p id="adjustments" class="subtle" style="margin-top:14px"></p>
+      </div>
+      <p id="empty" class="subtle">Enter laboratory values and select “Calculate scores.”</p>
+      <button id="export" type="button" disabled style="margin-top:13px">Export scores as CSV</button>
+      <div class="method">
+        <h3>Methods and limits</h3>
+        <ul>
+          <li>Inputs below 1 are floored to 1 for bilirubin, INR and creatinine.</li>
+          <li>Sodium is bounded to 125–137 mEq/L. MELD 3.0 albumin is bounded to 1.5–3.5 g/dL.</li>
+          <li>Creatinine is capped at 3 mg/dL for MELD 3.0 or 4 mg/dL for historical scores; qualifying dialysis forces the relevant cap.</li>
+          <li>Scores are rounded to whole numbers and bounded to 6–40.</li>
+          <li>No mortality prediction or exception-point eligibility is inferred from these scores.</li>
+        </ul>
+        <h3>Primary references</h3>
+        <p><a href="https://www.hrsa.gov/optn/data-calculators/allocation-calculators/meld-calculator" target="_blank" rel="noopener noreferrer">HRSA / OPTN MELD calculator</a> · <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10363200/" target="_blank" rel="noopener noreferrer">Published MELD 3.0 equations, including adolescent adaptation</a></p>
+      </div>
+    </section>
+  </div>
+  <footer>No data is uploaded, transmitted, or stored by this page. Avoid entering patient identifiers. Browser results are not a substitute for the official OPTN calculator or specialist review.</footer>
+</main>
 </body>
 </html>

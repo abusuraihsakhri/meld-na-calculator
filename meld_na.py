@@ -1,319 +1,190 @@
 #!/usr/bin/env python3
+"""Reference MELD, MELD-Na (2016), and adult MELD 3.0 calculations.
+
+The legacy models are provided for comparison. Since July 2023, adult U.S.
+liver allocation has used MELD 3.0 rather than the older MELD-Na formula.
+Scores are not clinical decisions or official OPTN allocation assignments.
+
+References:
+  Kim WR et al. MELD 3.0. Gastroenterology. 2021;161:1887-1895.e4.
+  https://www.hrsa.gov/optn/data-calculators/allocation-calculators/meld-calculator
 """
-MELD-Na Calculator — Real clinical scoring implementations.
-
-Implements:
-  - MELD (original): Kamath et al. 2001
-  - MELD-Na (2016):  UNOS revision incorporating serum sodium
-  - MELD 3.0 (2023): Kim et al. — adds albumin and sex adjustment
-
-All formulas use only Python stdlib (math).
-
-DISCLAIMER: This is an educational/reference implementation.
-It is NOT a substitute for clinical judgment. Always verify
-scores against institutional protocols before clinical use.
-"""
-
 import math
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
 BILI_MIN = 1.0
-BILI_MAX = 99.0      # upper cap rarely hit; prevents math domain errors
+BILI_MAX = math.inf
 INR_MIN = 1.0
-INR_MAX = 99.0
+INR_MAX = math.inf
 CREAT_MIN = 1.0
-CREAT_MAX = 4.0      # UNOS cap
+CREAT_MAX = 4.0                 # historical MELD / MELD-Na
+CREAT_3_MAX = 3.0               # adult MELD 3.0
 NA_MIN = 125.0
 NA_MAX = 137.0
-MELD_MIN = 1
+ALBUMIN_MIN = 1.5
+ALBUMIN_MAX = 3.5
+MELD_MIN = 6
 MELD_MAX = 40
 
-# 3-month mortality lookup (approximate, from Kamath / Wiesner literature)
-MORTALITY_TIERS = [
-    (9,  0.019,  "≤9"),
-    (19, 0.060,  "10–19"),
-    (29, 0.196,  "20–29"),
-    (39, 0.526,  "30–39"),
-    (40, 0.713,  "≥40"),
-]
-
-# Allocation priority tiers (simplified UNOS-style)
-ALLOCATION_TIERS = [
-    (40, "Status 1A equivalent — highest urgency, acute liver failure / graft non-function"),
-    (30, "Status 1B equivalent — very high priority, MELD ≥ 30"),
-    (25, "High priority — MELD 25–29"),
-    (15, "Moderate priority — MELD 15–24"),
-    (1,  "Lower priority — MELD < 15 (exception points may apply)"),
-]
+# Historical original-MELD strata, not calibrated MELD-Na/MELD 3.0 estimates.
+MORTALITY_TIERS = (
+    (9, 0.019, "6–9"),
+    (19, 0.060, "10–19"),
+    (29, 0.196, "20–29"),
+    (39, 0.526, "30–39"),
+    (40, 0.713, "40"),
+)
 
 
-# ---------------------------------------------------------------------------
-# Helper
-# ---------------------------------------------------------------------------
-def _validate_numeric(value: str, name: str) -> float:
-    """Validate and convert a numeric input, rejecting NaN and Inf."""
+def _validate_numeric(value: float, name: str) -> float:
+    """Reject non-finite and non-positive laboratory values."""
     try:
         result = float(value)
-    except (TypeError, ValueError) as e:
-        raise ValueError(f"{name} must be a valid number, got {value!r}") from e
-    if math.isnan(result) or math.isinf(result):
-        raise ValueError(f"{name} must be finite, got {result}")
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(f"{name} must be a positive, finite number") from exc
+    if not math.isfinite(result) or result <= 0:
+        raise ValueError(f"{name} must be a positive, finite number")
     return result
 
 
-def _clamp(value: float, lo: float, hi: float) -> float:
-    """Clamp *value* to [lo, hi]."""
-    return max(lo, min(value, hi))
+def _clamp(value: float, low: float, high: float) -> float:
+    return max(low, min(value, high))
 
 
-# ---------------------------------------------------------------------------
-# MELD (original)
-# ---------------------------------------------------------------------------
+def _score(raw: float) -> int:
+    """Clinical whole-number rounding (0.5 rounds upward), bounded 6–40."""
+    return int(_clamp(math.floor(raw + 0.5), MELD_MIN, MELD_MAX))
+
+
 def calculate_meld(
-    bilirubin: float,
-    inr: float,
-    creatinine: float,
-    dialysis: bool = False,
+    bilirubin: float, inr: float, creatinine: float, dialysis: bool = False
 ) -> int:
-    """
-    Calculate the original MELD score (Kamath et al. 2001).
-
-    Parameters
-    ----------
-    bilirubin : float   — serum bilirubin in mg/dL
-    inr       : float   — international normalized ratio
-    creatinine: float   — serum creatinine in mg/dL
-    dialysis  : bool    — True if patient received ≥ 2 dialysis sessions
-                          in the past week
-
-    Returns
-    -------
-    int — MELD score, clamped to [1, 40]
-    """
-    # Validate and floor at 1.0 (log of values < 1 is negative; MELD uses 1.0 minimum)
+    """Historical original MELD (not the current U.S. allocation formula)."""
     bili = _clamp(_validate_numeric(bilirubin, "bilirubin"), BILI_MIN, BILI_MAX)
-    inr_val = _clamp(_validate_numeric(inr, "inr"), INR_MIN, INR_MAX)
+    coag = _clamp(_validate_numeric(inr, "inr"), INR_MIN, INR_MAX)
     creat = _clamp(_validate_numeric(creatinine, "creatinine"), CREAT_MIN, CREAT_MAX)
-
-    # Dialysis override: ≥ 2 sessions in past week → creatinine = 4.0
     if dialysis:
-        creat = 4.0
-
-    meld_raw = (
-        3.78 * math.log(bili)
-        + 11.2 * math.log(inr_val)
-        + 9.57 * math.log(creat)
-        + 6.43
+        creat = CREAT_MAX
+    return _score(
+        3.78 * math.log(bili) + 11.2 * math.log(coag)
+        + 9.57 * math.log(creat) + 6.43
     )
 
-    return int(_clamp(round(meld_raw), MELD_MIN, MELD_MAX))
 
-
-# ---------------------------------------------------------------------------
-# MELD-Na (2016 UNOS revision)
-# ---------------------------------------------------------------------------
 def calculate_meld_na(
-    bilirubin: float,
-    inr: float,
-    creatinine: float,
-    sodium: float,
-    dialysis: bool = False,
+    bilirubin: float, inr: float, creatinine: float,
+    sodium: float, dialysis: bool = False
 ) -> int:
-    """
-    Calculate MELD-Na per the 2016 UNOS revision.
-
-    MELD-Na = MELD + 1.32 × (137 − Na) − 0.033 × MELD × (137 − Na)
-
-    The sodium correction is applied only when MELD > 11.
-    Sodium is clamped to [125, 137] mEq/L before use.
-
-    Parameters
-    ----------
-    bilirubin  : float — serum bilirubin in mg/dL
-    inr        : float — international normalized ratio
-    creatinine : float — serum creatinine in mg/dL
-    sodium     : float — serum sodium in mEq/L
-    dialysis   : bool  — True if ≥ 2 dialysis sessions in past week
-
-    Returns
-    -------
-    int — MELD-Na score, clamped to [1, 40]
-    """
+    """Historical 2016 MELD-Na, sodium correction only when MELD > 11."""
+    na = _clamp(_validate_numeric(sodium, "sodium"), NA_MIN, NA_MAX)
     meld = calculate_meld(bilirubin, inr, creatinine, dialysis)
-
-    # No sodium correction if MELD ≤ 11
     if meld <= 11:
         return meld
-
-    na = _clamp(_validate_numeric(sodium, "sodium"), NA_MIN, NA_MAX)
-
-    delta = 137.0 - na  # always ≥ 0 after clamping
-    meld_na_raw = meld + 1.32 * delta - 0.033 * meld * delta
-
-    return int(_clamp(round(meld_na_raw), MELD_MIN, MELD_MAX))
+    delta = 137.0 - na
+    return _score(meld + 1.32 * delta - 0.033 * meld * delta)
 
 
-# ---------------------------------------------------------------------------
-# MELD 3.0 (Kim et al. 2023)
-# ---------------------------------------------------------------------------
 def calculate_meld_3(
-    bilirubin: float,
-    inr: float,
-    creatinine: float,
-    sodium: float,
-    albumin: float,
-    female: bool = False,
-    dialysis: bool = False,
+    bilirubin: float, inr: float, creatinine: float, sodium: float,
+    albumin: float, female: bool = False, dialysis: bool = False
 ) -> int:
-    """
-    Calculate MELD 3.0 (Kim et al., NEJM 2023).
+    """Adult MELD 3.0 (2023 OPTN implementation; laboratory component only).
 
-    MELD 3.0 = 4.56 × ln(bili) + 9.09 × ln(INR) + 11.14 × ln(creat)
-               − 1.85 × ln(albumin) + 0.82 × (137 − Na)
-               − 0.24 × (137 − Na) × ln(creat)
-               + sex_bonus + 6
-
-    sex_bonus = 1.334 if female, 0 if male.
-
-    Parameters
-    ----------
-    bilirubin  : float — serum bilirubin in mg/dL
-    inr        : float — international normalized ratio
-    creatinine : float — serum creatinine in mg/dL
-    sodium     : float — serum sodium in mEq/L
-    albumin    : float — serum albumin in g/dL
-    female     : bool  — True for female sex
-    dialysis   : bool  — True if ≥ 2 dialysis sessions in past week
-
-    Returns
-    -------
-    int — MELD 3.0 score, clamped to [1, 40]
+    Dialysis means >=2 sessions or >=24 hours of CVVHD in the preceding week.
+    Adult use only; candidates aged 12–17 use an age-specific modification.
     """
     bili = _clamp(_validate_numeric(bilirubin, "bilirubin"), BILI_MIN, BILI_MAX)
-    inr_val = _clamp(_validate_numeric(inr, "inr"), INR_MIN, INR_MAX)
-    creat = _clamp(_validate_numeric(creatinine, "creatinine"), CREAT_MIN, CREAT_MAX)
+    coag = _clamp(_validate_numeric(inr, "inr"), INR_MIN, INR_MAX)
+    creat = _clamp(_validate_numeric(creatinine, "creatinine"), CREAT_MIN, CREAT_3_MAX)
     na = _clamp(_validate_numeric(sodium, "sodium"), NA_MIN, NA_MAX)
-    alb = max(0.1, _validate_numeric(albumin, "albumin"))  # prevent log(0); no clinical cap specified
-
+    alb = _clamp(_validate_numeric(albumin, "albumin"), ALBUMIN_MIN, ALBUMIN_MAX)
     if dialysis:
-        creat = 4.0
-
-    sex_bonus = 1.334 if female else 0.0
-    delta = 137.0 - na
-
-    meld3_raw = (
-        4.56 * math.log(bili)
-        + 9.09 * math.log(inr_val)
+        creat = CREAT_3_MAX
+    sodium_gap = 137.0 - na
+    albumin_gap = 3.5 - alb
+    result = (
+        (1.33 if female else 0.0)
+        + 4.56 * math.log(bili)
+        + 0.82 * sodium_gap
+        - 0.24 * sodium_gap * math.log(bili)
+        + 9.09 * math.log(coag)
         + 11.14 * math.log(creat)
-        - 1.85 * math.log(alb)
-        + 0.82 * delta
-        - 0.24 * delta * math.log(creat)
-        + sex_bonus
+        + 1.85 * albumin_gap
+        - 1.83 * albumin_gap * math.log(creat)
         + 6.0
     )
+    return _score(result)
 
-    return int(_clamp(round(meld3_raw), MELD_MIN, MELD_MAX))
 
-
-# ---------------------------------------------------------------------------
-# Clinical interpretation helpers
-# ---------------------------------------------------------------------------
 def estimate_3month_mortality(meld_score: int) -> float:
-    """
-    Return estimated 3-month mortality proportion for a given MELD score.
+    """Historical 90-day mortality from original MELD score strata only.
 
-    Based on Kamath & Wiesner et al. data. Returns a float in [0, 1].
+    Not validated for MELD-Na, MELD 3.0, or an individual patient.
     """
-    score = int(_clamp(_validate_numeric(meld_score, "meld_score"), MELD_MIN, MELD_MAX))
+    score = _score(_validate_numeric(meld_score, "meld_score"))
     for upper, rate, _label in MORTALITY_TIERS:
         if score <= upper:
             return rate
-    return 0.713  # fallback for score == 40
+    raise AssertionError("Unreachable MELD score")
 
 
 def get_allocation_priority(meld_score: int) -> str:
-    """Return a human-readable allocation priority tier description."""
-    score = int(_clamp(_validate_numeric(meld_score, "meld_score"), MELD_MIN, MELD_MAX))
-    for upper, description in ALLOCATION_TIERS:
-        if score >= upper:
-            return description
-    return ALLOCATION_TIERS[-1][1]
+    """Descriptive score band, NOT an allocation status or priority assignment."""
+    score = _score(_validate_numeric(meld_score, "meld_score"))
+    if score >= 30:
+        return "Very high MELD score (30–40); allocation status is determined separately"
+    if score >= 25:
+        return "High MELD score (25–29); allocation status is determined separately"
+    if score >= 15:
+        return "Moderate MELD score (15–24); allocation status is determined separately"
+    return "Lower MELD score (6–14); allocation status is determined separately"
 
 
 def get_exception_points_info() -> str:
-    """Return a summary of MELD exception point policies."""
+    """Avoid displaying obsolete or speculative HCC/exception point thresholds."""
     return (
-        "MELD Exception Points:\n"
-        "  - Hepatocellular carcinoma (HCC): MELD 28 at listing, +3 every 3 months\n"
-        "  - Hepatopulmonary syndrome: MELD 22 at listing, reassessed every 3 months\n"
-        "  - Portopulmonary hypertension: MELD 22 after documented treatment response\n"
-        "  - Hilar cholangiocarcinoma: MELD 28 at listing (requires protocol enrollment)\n"
-        "  - Cystic fibrosis: MELD 22 at listing, +3 every 3 months\n"
-        "  - Familial amyloid polyneuropathy: MELD 22 at listing\n"
-        "  - Primary hyperoxaluria: MELD 28 at listing (combined liver-kidney)\n"
-        "  NOTE: Exception policies are set by regional review boards and may vary.\n"
-        "  Always verify current UNOS policy for the most up-to-date criteria."
+        "MELD exception requests are governed by current OPTN policy, including "
+        "diagnosis-specific criteria and review procedures. This tool cannot "
+        "determine exception eligibility or award points. HCC and other indications "
+        "must be checked against the current policy and the transplant program. "
+        "Official information: "
+        "https://www.hrsa.gov/optn/data-calculators/allocation-calculators/meld-calculator"
     )
 
 
-# ---------------------------------------------------------------------------
-# Full assessment (convenience wrapper)
-# ---------------------------------------------------------------------------
 def full_assessment(
-    bilirubin: float,
-    inr: float,
-    creatinine: float,
-    sodium: float,
-    albumin: Optional[float] = None,
-    female: bool = False,
-    dialysis: bool = False,
+    bilirubin: float, inr: float, creatinine: float, sodium: float,
+    albumin: Optional[float] = None, female: bool = False,
+    dialysis: bool = False
 ) -> Dict[str, Any]:
-    """
-    Run all applicable MELD calculations and return a result dict.
-
-    Returns
-    -------
-    dict with keys:
-        meld           — original MELD score (int)
-        meld_na        — MELD-Na 2016 score (int)
-        meld_3         — MELD 3.0 score (int) or None if albumin not provided
-        mortality_3mo  — estimated 3-month mortality (float)
-        priority       — allocation priority tier (str)
-        inputs         — dict of clamped/adjusted input values used
-    """
-    bilirubin = _validate_numeric(bilirubin, "bilirubin")
-    inr = _validate_numeric(inr, "inr")
-    creatinine = _validate_numeric(creatinine, "creatinine")
-    sodium = _validate_numeric(sodium, "sodium")
-
-    meld = calculate_meld(bilirubin, inr, creatinine, dialysis)
-    meld_na = calculate_meld_na(bilirubin, inr, creatinine, sodium, dialysis)
-
-    meld_3 = None
-    if albumin is not None:
-        meld_3 = calculate_meld_3(
-            bilirubin, inr, creatinine, sodium, albumin, female, dialysis
-        )
-
-    # Use the best available score for mortality / priority
-    best = meld_na if meld_na is not None else meld
-
+    """Return three historical/current scores with transparently capped inputs."""
+    bili = _validate_numeric(bilirubin, "bilirubin")
+    coag = _validate_numeric(inr, "inr")
+    creat = _validate_numeric(creatinine, "creatinine")
+    na = _validate_numeric(sodium, "sodium")
+    alb = None if albumin is None else _validate_numeric(albumin, "albumin")
+    meld = calculate_meld(bili, coag, creat, dialysis)
+    meld_na = calculate_meld_na(bili, coag, creat, na, dialysis)
+    meld3 = (
+        calculate_meld_3(bili, coag, creat, na, alb, female, dialysis)
+        if alb is not None else None
+    )
     return {
         "meld": meld,
         "meld_na": meld_na,
-        "meld_3": meld_3,
-        "mortality_3mo": estimate_3month_mortality(best),
-        "priority": get_allocation_priority(best),
+        "meld_3": meld3,
+        "mortality_3mo": estimate_3month_mortality(meld),
+        "mortality_note": "Historical original-MELD strata; not a patient-specific risk or MELD 3.0 estimate.",
+        "priority": get_allocation_priority(meld3 if meld3 is not None else meld_na),
+        "priority_note": "A descriptive score band only; not an OPTN allocation assignment.",
         "inputs": {
-            "bilirubin_mgdl": _clamp(float(bilirubin), BILI_MIN, BILI_MAX),
-            "inr": _clamp(float(inr), INR_MIN, INR_MAX),
-            "creatinine_mgdl": 4.0 if dialysis else _clamp(float(creatinine), CREAT_MIN, CREAT_MAX),
-            "sodium_meql": _clamp(float(sodium), NA_MIN, NA_MAX),
-            "albumin_gdl": albumin,
-            "dialysis": dialysis,
-            "female": female,
+            "bilirubin_mgdl": _clamp(bili, BILI_MIN, BILI_MAX),
+            "inr": _clamp(coag, INR_MIN, INR_MAX),
+            "creatinine_mgdl": CREAT_MAX if dialysis else _clamp(creat, CREAT_MIN, CREAT_MAX),
+            "creatinine_mgdl_meld3": CREAT_3_MAX if dialysis else _clamp(creat, CREAT_MIN, CREAT_3_MAX),
+            "sodium_meql": _clamp(na, NA_MIN, NA_MAX),
+            "albumin_gdl": None if alb is None else _clamp(alb, ALBUMIN_MIN, ALBUMIN_MAX),
+            "dialysis": bool(dialysis),
+            "female": bool(female),
         },
     }

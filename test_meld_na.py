@@ -59,6 +59,7 @@ def _check(name: str, condition: bool, detail: str = ""):
     _results.append(_TestResult(name, condition, detail))
     if not condition:
         print(f"  FAIL: {name} — {detail}")
+        raise AssertionError(f"{name}: {detail}")
 
 
 def _eq(name: str, actual, expected, tolerance=None):
@@ -283,9 +284,10 @@ def test_meld_3_hand_calc():
         4.56 * math.log(bili)
         + 9.09 * math.log(inr_val)
         + 11.14 * math.log(creat)
-        - 1.85 * math.log(alb)
+        + 1.85 * (3.5 - alb)
         + 0.82 * delta
-        - 0.24 * delta * math.log(creat)
+        - 0.24 * delta * math.log(bili)
+        - 1.83 * (3.5 - alb) * math.log(creat)
         + 0.0  # male
         + 6.0
     )
@@ -336,8 +338,9 @@ def test_mortality_max_meld():
 # ===================================================================
 def test_priority_tiers():
     """Verify priority tier assignments."""
-    _check("priority_40", "Status 1A" in get_allocation_priority(40))
-    _check("priority_35", "Status 1B" in get_allocation_priority(35) or "≥ 30" in get_allocation_priority(35))
+    _check("priority_40", "Very high" in get_allocation_priority(40))
+    _check("priority_35", "Very high" in get_allocation_priority(35))
+    _check("priority_no_status_1", "Status 1" not in get_allocation_priority(40))
     _check("priority_25", "High" in get_allocation_priority(25))
     _check("priority_20", "Moderate" in get_allocation_priority(20))
     _check("priority_10", "Lower" in get_allocation_priority(10))
