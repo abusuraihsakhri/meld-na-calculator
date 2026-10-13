@@ -1,112 +1,126 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Meld Na Calculator API",
-    "description": "Enterprise Distributed Component Platform (Clinical & Cryptographic AI) adhering to CAP / CLSI / NIST Standards.",
-    "version": "3.0.0-ENTERPRISE",
-    "contact": {
-      "name": "Dr. Abu Suraih Sakhri",
-      "url": "https://github.com/abusuraihsakhri"
-    }
+    "title": "MELD Reference Calculator API",
+    "description": "Educational MELD, MELD-Na (2016), and adult MELD 3.0 calculations. Not an official allocation system.",
+    "version": "1.1.0"
   },
   "paths": {
     "/health": {
       "get": {
-        "summary": "Health and metadata check",
+        "summary": "Service health",
         "responses": {
           "200": {
-            "description": "System optimal"
+            "description": "Status JSON"
           }
         }
       }
     },
     "/metrics": {
       "get": {
-        "summary": "Prometheus operational metrics",
+        "summary": "In-process audit counters",
         "responses": {
           "200": {
-            "description": "Prometheus text metrics"
+            "description": "Counters JSON; not Prometheus format"
+          }
+        }
+      }
+    },
+    "/api/calculate": {
+      "post": {
+        "summary": "Calculate scores from positive lab inputs",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "bilirubin",
+                  "inr",
+                  "creatinine",
+                  "sodium"
+                ],
+                "properties": {
+                  "bilirubin": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "description": "mg/dL"
+                  },
+                  "inr": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "creatinine": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "description": "mg/dL"
+                  },
+                  "sodium": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "description": "mEq/L"
+                  },
+                  "albumin": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "exclusiveMinimum": 0,
+                    "description": "g/dL; required for MELD 3.0"
+                  },
+                  "female": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "dialysis": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reference score calculations and applied caps"
+          },
+          "422": {
+            "description": "Validation error"
           }
         }
       }
     },
     "/api/audit": {
       "post": {
-        "summary": "Dispatch task payload across specialized workers",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "task_id": {
-                    "type": "string"
-                  },
-                  "target_identifier": {
-                    "type": "string"
-                  },
-                  "primary_metric": {
-                    "type": "number"
-                  },
-                  "secondary_metric": {
-                    "type": "number"
-                  },
-                  "status_descriptor": {
-                    "type": "string"
-                  },
-                  "is_critical_flag": {
-                    "type": "boolean"
-                  }
-                },
-                "required": [
-                  "task_id",
-                  "target_identifier",
-                  "primary_metric"
-                ]
-              }
-            }
-          }
-        },
+        "summary": "Legacy rule-based audit demo (not clinical MELD evaluation)",
         "responses": {
           "200": {
-            "description": "Consensus dossier with HMAC signature"
+            "description": "In-memory audit dossier"
+          },
+          "400": {
+            "description": "Recognized identifier blocked"
           }
         }
       }
     },
     "/api/chat": {
       "post": {
-        "summary": "Air-gapped supervisory conversational assistant",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "query": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "query"
-                ]
-              }
-            }
-          }
-        },
+        "summary": "Deterministic placeholder (not an LLM)",
         "responses": {
           "200": {
-            "description": "Supervisory response"
+            "description": "Placeholder response"
           }
         }
       }
     },
     "/api/audit/logs": {
       "get": {
-        "summary": "Retrieve and cryptographically verify HMAC audit trail",
+        "summary": "In-memory HMAC audit trail and integrity check",
         "responses": {
           "200": {
-            "description": "Cryptographic audit trail"
+            "description": "Entries and verification flag"
           }
         }
       }
